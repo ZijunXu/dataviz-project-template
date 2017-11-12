@@ -98,31 +98,26 @@
     var height = width / 3 * 2;
 
     const margin = {left: 30, right: 15, top: 15, bottom: 18};
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height / 5 - margin.top - margin.bottom;
+    let innerWidth = width - margin.left - margin.right;
+    let innerHeight = height / 5 - margin.top - margin.bottom;
 
     //offsets for tooltips
     var offsetL = c.offsetLeft + 20;
     var offsetT = c.offsetTop + 10;
 
-    var topo, projection, path, svg, g;
+    var topo, projection, path, svg, g, gpoint, wholeData;
 
     //var graticule = d3.geo.graticule();
     var graticule = d3.geoGraticule();
 
     var tooltip = d3.select("#container").append("div").attr("class", "tooltip hidden");
 
-    const xScale = d3.scaleBand()
-            .paddingInner(0.1)
-            .paddingOuter(0.1),
-        yScale = d3.scaleLinear();
+    let x = d3.scaleTime()
+        .domain([new Date(1944, 12, 31), new Date(1998, 12, 31)])
+        .range([0, innerWidth])
+        .nice(d3.timeYear);
 
-    const xAxis = d3.axisBottom(xScale),
-        yAxis = d3.axisLeft(yScale);
-
-    //    var	parseDate = d3.timeFormat("%Y%m%d").parse;
-
-    var brush = d3.brushX()
+    const brush = d3.brushX()
         .extent([[margin.left, margin.top], [innerWidth + margin.left, innerHeight + margin.top]])
         .on("brush end", brushed);
 
@@ -210,22 +205,38 @@
             .on("mouseover", handleMouseOver)
             .on("mouseout", handleMouseOut);
 
-
+        gpoint = g.append("g").attr("class", "gpoint");
+        renderBar();
     }
 
-    function drawPoints() {
-        d3.csv("data/sipri-report-explosions.csv", function (err, explosions) {
-            explosions.forEach(function (i) {
-                addpoint(i.longitude, i.latitude, i.country);
-            });
+    function drawPoints(data) {
 
-        });
+
+
+        const circles = gpoint.selectAll('.point').data(data);
+        circles.enter().append('circle')
+            .attr('class', 'point')
+            .merge(circles)
+            .attr('cx', function (d) {
+                return projection([d.longitude, d.latitude])[0]
+            })
+            .attr('cy', function (d) {
+                return projection([d.longitude, d.latitude])[1]
+            })
+            .attr('r', 5)
+            .attr('text', function (d) {
+                return d.country
+            });
+        circles.exit().remove();
     }
 
 
     function redraw() {
         width = c.offsetWidth;
         height = width / 3 * 2;
+        innerWidth = width - margin.left - margin.right;
+        innerHeight = height / 5 - margin.top - margin.bottom;
+        x.range([0, innerWidth]);
         d3.selectAll('svg').remove();
         setup(width, height);
         draw(topo);
@@ -276,147 +287,110 @@
     }
 
 
-    //function to add points and text to the map (used in plotting capitals)
-    function addpoint(lon, lat, text) {
-
-        var gpoint = g.append("g").attr("class", "gpoint");
-        var x = projection([lon, lat])[0];
-        var y = projection([lon, lat])[1];
-
-        gpoint.append("svg:circle")
-            .attr("cx", x)
-            .attr("cy", y)
-            .attr("class", "point")
-            .attr("r", 1.5);
-
-        //conditional in case a point has no associated text
-        if (text.length > 0) {
-
-            gpoint.append("text")
-                .attr("x", x + 2)
-                .attr("y", y + 2)
-                .attr("class", "text")
-                .text(text);
-        }
-
-    }
-
     const row = d => {
-        //const netUsersWithCommas = d['Internet Users 31 Mar 2017'];
         return {
             year: +d['year'],
-            country: d['country']
+            country: d['country'],
+            date_long: d['date_long'],
+            longitude: +d['longitude'],
+            latitude: +d['latitude']
         };
     };
 
-    d3.csv("data/sipri-report-explosions.csv", row, preprocessing);
+    function renderBar() {
+        d3.csv("data/sipri-report-explosions.csv", row, preprocessing);
+    }
 
     function preprocessing(data) {
-        const nested = d3.nest()
-            .key(function (d) {
-                return d['year']
+//        console.log(data);
+
+        wholeData = data;
+        drawPoints(data, [new Date(1944, 12, 31), new Date(1998, 12, 31)]);
+
+        const year_formater = d3.timeFormat("%Y"),
+            toDate = function (d) {
+                const day = d.date_long;
+                return day.slice(0, 4) + "-" + day.slice(4, 6) + "-" + day.slice(6, 8)
+            },
+            toYear = function (d) {
+                return year_formater(new Date(toDate(d)))
+            };
+
+        const explosionsByYear = d3.nest()
+            .key(toYear)
+            .sortKeys(d3.ascending)
+            .rollup(function (values) {
+                return {
+                    amount: values.length
+                }
             })
-            //            .rollup(function (d) {
-            //                return d.length
-            //            })
             .entries(data);
 
-        const count = {};
-
-        for (let i = 1945; i <= 1998; i++) {
-            count[i] = 0;
-        }
-
-        for (let i = 0; i < nested.length; i++) {
-            count[nested[i].key] = nested[i].values.length;
-        }
-
-        const processed = [];
-        for (let i = 1945; i <= 1998; i++) {
-            processed.push({year: String(i), value: count[i]})
-        }
-        console.log(count);
-        console.log(d3.map(count));
-        console.log(processed);
-//        const processed = d3.map(count);
-        drawBar(processed);
-        drawPoints();
+        drawBar(explosionsByYear);
+//        drawPoints();
     }
 
     function drawBar(data) {
 
-        console.log(data);
+        const y = d3.scaleLinear()
+            .domain([0, d3.max(data, function (d) {
+                return d.value.amount;
+            })])
+            .range([innerHeight, 0]);
+
+        const xAxis = d3.axisBottom(x),
+            yAxis = d3.axisLeft(y);
 
         const yAxisG = g2.append("g")
             .attr("class", "axis axis--y")
             .call(yAxis);
-
-        yAxisG.append('text')
-            .attr('class', 'axis-label')
-            .attr('x', -innerHeight / 2)
-            .attr('y', -50)
-            .attr('transform', `rotate(-90)`)
-            .style('text-anchor', 'middle');
 
         const xAxisG = g2.append("g")
             .attr("class", "axis axis--x")
             .attr("transform", "translate(0," + innerHeight + ")")
             .call(xAxis);
 
-        const xValue = function (data) {
-            return data.year;
-        };
-        const yValue = function (data) {
-            return data.value;
-        };
-
-        xScale.range([0, innerWidth])
-            .domain(data.map(function (data) {
-                return data.year
-            }));
-        yScale.range([innerHeight, 0])
-            .domain([0, 178]);
-
         barChart.append('g')
             .attr('class', 'brush')
             .call(brush);
-//            .call(brush.move(), yScale.range());
+//            .call(brush.move(), x.range());
 
         const bar = g2.selectAll('rect').data(data);
 
         bar.enter().append('rect')
-            .attr('width', data => xScale.bandwidth())
-    .attr('fill', 'steelblue')
+            .attr('width', (innerWidth / data.length / 1.2))
+            .attr('fill', 'steelblue')
             .merge(bar)
             .attr('x', function (data) {
-                return xScale(xValue(data))
+                return x(new Date(data.key + "-08-01"))
             })
             .attr('y', function (data) {
-                return yScale(yValue(data))
+                return y(data.value.amount)
             })
-            .attr('height', data => innerHeight - yScale(yValue(data)));
+            .attr('height', data => innerHeight - y(data.value.amount));
 
         bar.exit().remove();
 
-        yAxisG.call(yAxis);
-        xAxisG.call(xAxis)
+        yAxisG.call(y);
+        xAxisG.call(x)
     }
 
     function brushed() {
         if (d3.event.sourceEvent && d3.event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
-        var s = d3.event.selection || xScale.range();
-        console.log(s);
-//        console.log(s.map(x2.invert, x2));
-//        console.log(s.map(x2.invert));
-//        console.log(s.map(yScale.invert));
-//        x.domain(s.map(xScale.invert, x2));
-//        focus.selectAll(".line_casual").attr("d", lineCasual);
-//        focus.select(".line_registered").attr("d", lineRegistered);
-//        focus.select(".line_temp").attr("d", lineTemp);
-//        focus.select(".axis--x").call(xAxis);
-//        svg.select(".zoom").call(zoom.transform, d3.zoomIdentity
-//            .scale(width / (s[1] - s[0]))
-//            .translate(-s[0], 0));
+        const s = d3.event.selection || x.range();
+        console.log(s.map(x.invert, x));
+        period = s.map(x.invert);
+        upDatePoint(period);
+    }
+
+    function upDatePoint(boundry) {
+
+        const formatter = d3.timeFormat("%Y%m%d");
+
+        const data = wholeData.filter(function (d) {
+            return (d.date_long >= formatter(boundry[0]) && d.date_long <= formatter(boundry[1]))
+        });
+        drawPoints(data);
     }
 </script>
 </body>

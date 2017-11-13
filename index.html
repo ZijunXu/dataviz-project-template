@@ -1,83 +1,82 @@
 <!--<!DOCTYPE html>-->
 <!--<html>-->
-  <!--<head>-->
-    <!--<meta charset="utf-8">-->
-    <!--<meta name="viewport" content="width=device-width">-->
-    <!--<script src="https://d3js.org/d3.v4.min.js"></script>-->
-    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.24.0/d3-legend.min.js"></script>-->
-    <!--<title>Visualization Project</title>-->
-    <!--<link rel="stylesheet" href="css/styles.css">-->
-  <!--</head>-->
-  <!--<body>-->
-    <!--<div id="visualization">-->
-      <!--<svg></svg>-->
-    <!--</div>-->
-    <!--<script src="./dist/bundle.js"></script>-->
-  <!--</body>-->
+<!--<head>-->
+<!--<meta charset="utf-8">-->
+<!--<meta name="viewport" content="width=device-width">-->
+<!--<script src="https://d3js.org/d3.v4.min.js"></script>-->
+<!--<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.24.0/d3-legend.min.js"></script>-->
+<!--<title>Visualization Project</title>-->
+<!--<link rel="stylesheet" href="css/styles.css">-->
+<!--</head>-->
+<!--<body>-->
+<!--<div id="visualization">-->
+<!--<svg></svg>-->
+<!--</div>-->
+<!--<script src="./dist/bundle.js"></script>-->
+<!--</body>-->
 <!--</html>-->
 <!DOCTYPE html>
 <meta charset="utf-8">
 <title>D3 World Map Template | TechSlides</title>
 <style>
-  .country:hover {
-    stroke: #fff;
-    stroke-width: 1.5px;
-  }
+    .country:hover {
+        stroke: #fff;
+        stroke-width: 1.5px;
+    }
 
-  .text {
-    font-size: 10px;
-    text-transform: capitalize;
-  }
+    .text {
+        font-size: 10px;
+        text-transform: capitalize;
+    }
 
-  #container {
-    margin: 10px 5%;
-    border: 2px solid #000;
-    border-radius: 5px;
-    height: 100%;
-    overflow: hidden;
-    background: #F0F8FF;
-  }
+    #container {
+        margin: 10px 5%;
+        border: 2px solid #000;
+        border-radius: 5px;
+        height: 100%;
+        overflow: hidden;
+        background: #F0F8FF;
+    }
 
-  #container2 {
-    margin: 10px 5%;
-    border: 2px solid #000;
-    border-radius: 5px;
-    height: 100%;
-    overflow: hidden;
-    background: #F0F8FF;
-  }
+    #container2 {
+        margin: 10px 5%;
+        border: 2px solid #000;
+        border-radius: 5px;
+        height: 100%;
+        overflow: hidden;
+        background: #F0F8FF;
+    }
 
-  .hidden {
-    display: none;
-  }
+    .hidden {
+        display: none;
+    }
 
-  div.tooltip {
-    color: #222;
-    background: #fff;
-    padding: .5em;
-    text-shadow: #f5f5f5 0 1px 0;
-    border-radius: 2px;
-    box-shadow: 0px 0px 2px 0px #a6a6a6;
-    opacity: 0.9;
-    position: absolute;
-  }
+    div.tooltip {
+        color: #222;
+        background: #fff;
+        padding: .5em;
+        text-shadow: #f5f5f5 0 1px 0;
+        border-radius: 2px;
+        box-shadow: 0px 0px 2px 0px #a6a6a6;
+        opacity: 0.9;
+        position: absolute;
+    }
 
-  .graticule {
-    fill: none;
-    stroke: #bbb;
-    stroke-width: .5px;
-    stroke-opacity: .5;
-  }
+    .graticule {
+        fill: none;
+        stroke: #bbb;
+        stroke-width: .5px;
+        stroke-opacity: .5;
+    }
 
-  .equator {
-    stroke: #ccc;
-    stroke-width: 1px;
-  }
+    .equator {
+        stroke: #ccc;
+        stroke-width: 1px;
+    }
 
 </style>
 </head>
 <body>
-
 <div id="container"></div>
 <div id="container2"></div>
 
@@ -89,7 +88,6 @@
     d3.select(window).on("resize", throttle);
 
     var zoom = d3.zoom()
-    //.extent([1,9])
         .scaleExtent([1, 9])
         .on("zoom", move);
 
@@ -107,19 +105,19 @@
 
     var topo, projection, path, svg, g, gpoint, wholeData;
 
-    //var graticule = d3.geo.graticule();
     var graticule = d3.geoGraticule();
 
     var tooltip = d3.select("#container").append("div").attr("class", "tooltip hidden");
 
-    let x = d3.scaleTime()
+    const rScale = d3.scaleSqrt();
+
+    const x = d3.scaleTime()
         .domain([new Date(1944, 12, 31), new Date(1998, 12, 31)])
         .range([0, innerWidth])
         .nice(d3.timeYear);
 
-    const brush = d3.brushX()
-        .extent([[margin.left, margin.top], [innerWidth + margin.left, innerHeight + margin.top]])
-        .on("brush end", brushed);
+    const brush = d3.brushX();
+
 
     setup(width, height);
 
@@ -141,13 +139,6 @@
 
         g = svg.append("g")
             .on("click", click);
-
-        barChart = d3.select("#container2").append("svg")
-            .attr('width', width)
-            .attr('height', height / 5);
-
-        g2 = barChart.append('g')
-            .attr('transform', `translate(${margin.left},${margin.top})`);
     }
 
     d3.json("data/world-topo-min.json", function (error, world) {
@@ -181,12 +172,10 @@
             .attr("class", "graticule")
             .attr("d", path);
 
-
         g.append("path")
             .datum({type: "LineString", coordinates: [[-180, 0], [-90, 0], [0, 0], [90, 0], [180, 0]]})
             .attr("class", "equator")
             .attr("d", path);
-
 
         var country = g.selectAll(".country").data(topo);
 
@@ -211,7 +200,11 @@
 
     function drawPoints(data) {
 
-
+        rScale
+            .domain(d3.extent(data, function (d) {
+                return d.yield_1;
+            }))
+            .range([4, 22]);
 
         const circles = gpoint.selectAll('.point').data(data);
         circles.enter().append('circle')
@@ -223,7 +216,11 @@
             .attr('cy', function (d) {
                 return projection([d.longitude, d.latitude])[1]
             })
-            .attr('r', 5)
+            .attr('r', function (d) {
+                return rScale(d.yield_1)
+            })
+            .attr('fill', 'black')
+            .attr('fill-opacity', 0.55)
             .attr('text', function (d) {
                 return d.country
             });
@@ -246,28 +243,39 @@
     function move() {
 
         //var t = d3.event.translate;
-        var t = [d3.event.transform.x, d3.event.transform.y];
+        const t = [d3.event.transform.x, d3.event.transform.y];
+
         //var s = d3.event.scale;
-        var s = d3.event.transform.k;
-        zscale = s;
-        var h = height / 4;
+        const s = d3.event.transform.k;
+
+//        zscale = s;
+        const h = height / 4;
 
         t[0] = Math.min(
             (width / height) * (s - 1),
             Math.max(width * (1 - s), t[0])
         );
+        // to prevent move too much to left which makes the left border have a positive longitude
+        t[0] = Math.min(t[0], 0);
 
         t[1] = Math.min(
             h * (s - 1) + h * s,
             Math.max(height * (1 - s) - h * s, t[1])
         );
-
         //zoom.translateBy(t);
         g.attr("transform", "translate(" + t + ")scale(" + s + ")");
 
         //adjust the country hover stroke width based on zoom level
         d3.selectAll(".country").style("stroke-width", 1.5 / s);
 
+
+        const leftUp = projection.invert([-t[0] / s, -t[1] / s]);
+        const rightDown = projection.invert([(-t[0] + width) / s, (-t[1] + height) / s]);
+        const d = wholeData.filter(function (d) {
+            return (d.latitude > rightDown[1] && d.latitude < leftUp[1] && d.longitude < rightDown[0] && d.longitude > leftUp[0]);
+        });
+//        console.log(d);
+        nestByYear(d);
     }
 
     var throttleTimer;
@@ -283,7 +291,8 @@
     //geo translation on mouse click in map
     function click() {
         var latlon = projection.invert(d3.mouse(this));
-        console.log(latlon);
+
+//        console.log(d3.mouse(this));
     }
 
 
@@ -293,7 +302,8 @@
             country: d['country'],
             date_long: d['date_long'],
             longitude: +d['longitude'],
-            latitude: +d['latitude']
+            latitude: +d['latitude'],
+            yield_1: +d['yield_1']
         };
     };
 
@@ -302,9 +312,12 @@
     }
 
     function preprocessing(data) {
-//        console.log(data);
-
         wholeData = data;
+        nestByYear(data);
+    }
+
+
+    function nestByYear(data) {
         drawPoints(data, [new Date(1944, 12, 31), new Date(1998, 12, 31)]);
 
         const year_formater = d3.timeFormat("%Y"),
@@ -327,10 +340,21 @@
             .entries(data);
 
         drawBar(explosionsByYear);
-//        drawPoints();
     }
 
     function drawBar(data) {
+
+        d3.selectAll('#container2 svg').remove();
+
+        barChart = d3.select("#container2").append("svg")
+            .attr('width', width)
+            .attr('height', height / 5);
+
+        g2 = barChart.append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        brush.extent([[margin.left, margin.top], [innerWidth + margin.left, innerHeight + margin.top]])
+            .on("brush end", brushed);
 
         const y = d3.scaleLinear()
             .domain([0, d3.max(data, function (d) {
@@ -358,7 +382,7 @@
         const bar = g2.selectAll('rect').data(data);
 
         bar.enter().append('rect')
-            .attr('width', (innerWidth / data.length / 1.2))
+            .attr('width', (innerWidth / 55 / 1.2))
             .attr('fill', 'steelblue')
             .merge(bar)
             .attr('x', function (data) {
@@ -378,7 +402,7 @@
     function brushed() {
         if (d3.event.sourceEvent && d3.event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
         const s = d3.event.selection || x.range();
-        console.log(s.map(x.invert, x));
+//        console.log(s.map(x.invert, x));
         period = s.map(x.invert);
         upDatePoint(period);
     }
